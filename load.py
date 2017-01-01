@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import Imputer
 from sklearn.naive_bayes import GaussianNB
+from sklearn.cross_validation import cross_val_score
 from sklearn import metrics
 
 def plotcatfeats(dataframe, feature):
@@ -60,31 +61,53 @@ if __name__ == "__main__":
     print 'Margin: ' + str(float(data['Margin'].isnull().sum())/data['Margin'].isnull().count())
     print 'Density: ' + str(float(data['Density'].isnull().sum())/data['Density'].isnull().count())
     
-    # replace NaN age values with mean
-    data.loc[data['Severity']==0, 'Age'] = imputenans(data.loc[data['Severity']==0, 'Age'], 'mean')
-    data.loc[data['Severity']==1, 'Age'] = imputenans(data.loc[data['Severity']==1, 'Age'], 'mean')
-    
-    # replace NaN categorical feature values with mode
-    data.loc[data['Severity']==0, 'Shape'] = imputenans(data.loc[data['Severity']==0, 'Shape'], 'most_frequent')
-    data.loc[data['Severity']==1, 'Shape'] = imputenans(data.loc[data['Severity']==1, 'Shape'], 'most_frequent')
-    data.loc[data['Severity']==0, 'Margin'] = imputenans(data.loc[data['Severity']==0, 'Margin'], 'most_frequent')
-    data.loc[data['Severity']==1, 'Margin'] = imputenans(data.loc[data['Severity']==1, 'Margin'], 'most_frequent')
-    data.loc[data['Severity']==0, 'Density'] = imputenans(data.loc[data['Severity']==0, 'Density'], 'most_frequent')
-    data.loc[data['Severity']==1, 'Density'] = imputenans(data.loc[data['Severity']==1, 'Density'], 'most_frequent')
-    
-    # combine categories with few samples
-    # combine margin categories 2 and 3
-    
-    # combine density categories 1 and 2
-    
-    # combine density categories 3 and 4
-    
-    # bin age into categories?
-    
-    
     # split data into train and test sets
     train_set = data.sample(frac=0.8)
     test_set = data.drop(train_set.index)
+    
+    # replace NaN age values with mean (applying averages from training set to train and test sets)
+    train_set.loc[train_set['Severity']==0, 'Age'] = imputenans(train_set.loc[train_set['Severity']==0, 'Age'], 'mean')
+    train_set.loc[train_set['Severity']==1, 'Age'] = imputenans(train_set.loc[train_set['Severity']==1, 'Age'], 'mean')
+    
+    test_set.loc[test_set['Severity']==0, 'Age'] = imputenans(test_set.loc[test_set['Severity']==0, 'Age'], 'mean')
+    test_set.loc[test_set['Severity']==1, 'Age'] = imputenans(test_set.loc[test_set['Severity']==1, 'Age'], 'mean')    
+    
+    # replace NaN categorical feature values with mode (applying averages from training set to train and test sets)
+    train_set.loc[train_set['Severity']==0, 'Shape'] = imputenans(train_set.loc[train_set['Severity']==0, 'Shape'], 'most_frequent')
+    train_set.loc[train_set['Severity']==1, 'Shape'] = imputenans(train_set.loc[train_set['Severity']==1, 'Shape'], 'most_frequent')
+    train_set.loc[train_set['Severity']==0, 'Margin'] = imputenans(train_set.loc[train_set['Severity']==0, 'Margin'], 'most_frequent')
+    train_set.loc[train_set['Severity']==1, 'Margin'] = imputenans(train_set.loc[train_set['Severity']==1, 'Margin'], 'most_frequent')
+    train_set.loc[train_set['Severity']==0, 'Density'] = imputenans(train_set.loc[train_set['Severity']==0, 'Density'], 'most_frequent')
+    train_set.loc[train_set['Severity']==1, 'Density'] = imputenans(train_set.loc[train_set['Severity']==1, 'Density'], 'most_frequent')    
+    
+    test_set.loc[test_set['Severity']==0, 'Shape'] = imputenans(test_set.loc[test_set['Severity']==0, 'Shape'], 'most_frequent')
+    test_set.loc[test_set['Severity']==1, 'Shape'] = imputenans(test_set.loc[test_set['Severity']==1, 'Shape'], 'most_frequent')
+    test_set.loc[test_set['Severity']==0, 'Margin'] = imputenans(test_set.loc[test_set['Severity']==0, 'Margin'], 'most_frequent')
+    test_set.loc[test_set['Severity']==1, 'Margin'] = imputenans(test_set.loc[test_set['Severity']==1, 'Margin'], 'most_frequent')
+    test_set.loc[test_set['Severity']==0, 'Density'] = imputenans(test_set.loc[test_set['Severity']==0, 'Density'], 'most_frequent')
+    test_set.loc[test_set['Severity']==1, 'Density'] = imputenans(test_set.loc[test_set['Severity']==1, 'Density'], 'most_frequent')
+    
+    # combine categories with few samples
+    # combine margin categories 2 and 3
+    train_set.loc[train_set['Margin']==2, 'Margin'] = 2.5
+    train_set.loc[train_set['Margin']==3, 'Margin'] = 2.5
+    test_set.loc[test_set['Margin']==2, 'Margin'] = 2.5
+    test_set.loc[test_set['Margin']==3, 'Margin'] = 2.5
+    
+    # combine density categories 1 and 2
+    train_set.loc[train_set['Density']==1, 'Density'] = 1.5
+    train_set.loc[train_set['Density']==2, 'Density'] = 1.5
+    test_set.loc[test_set['Density']==1, 'Density'] = 1.5
+    test_set.loc[test_set['Density']==2, 'Density'] = 1.5
+    
+    # combine density categories 3 and 4
+    train_set.loc[train_set['Density']==3, 'Density'] = 3.5
+    train_set.loc[train_set['Density']==4, 'Density'] = 3.5
+    test_set.loc[test_set['Density']==3, 'Density'] = 3.5
+    test_set.loc[test_set['Density']==4, 'Density'] = 3.5
+    
+    # bin age into categories?
+
     
     # extract features and labels
     train_feats = train_set.loc[:, 'Age':'Density']
@@ -96,8 +119,10 @@ if __name__ == "__main__":
     # APPLY MACHINE LEARNING ALGORITHMS
     # Naive Bayes
     clf = GaussianNB()
-    clf.fit(train_feats, train_labels)
-    
+    scores = cross_val_score(clf, train_feats, train_labels, cv=5, scoring='f1')
+    print scores.mean()
+
+    clf.fit(train_feats, train_labels)   
     predictions = clf.predict(test_feats)
     # extract and print info about classifier performance
     full_report = metrics.classification_report(test_labels,predictions,target_names=None)
