@@ -7,13 +7,11 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn import tree
+from sklearn import tree, metrics
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
 from sklearn.grid_search import GridSearchCV
-from sklearn import metrics
 
 def plotcatfeats(dataframe, feature):
     feat_table = pd.crosstab(index=dataframe['Severity'], columns=dataframe[feature])
@@ -142,6 +140,7 @@ if __name__ == '__main__':
     
     # for recording f1 scores
     scores = {}
+    tuned_scores = {}
     
     # Naive Bayes
     nb = GaussianNB()
@@ -176,23 +175,68 @@ if __name__ == '__main__':
     scores_gbc = cross_val_score(gbc, train_feats, train_labels, cv=5, scoring='f1')
     scores['Gradient Boosting'] = scores_gbc.mean()
     
-    #identify best classifier
+    #identify best classifiers
     print "Five best performing classifiers (F1-score):" 
     top5 = sorted(scores, key=scores.get, reverse=True)[:5]
     for cl in top5:
         print cl + " (" + str(scores[cl]) + ")"
     
-    #clf.fit(train_feats, train_labels)   
-    #predictions = clf.predict(test_feats)
-
-    #tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}, {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
-    #svm = GridSearchCV(SVC(C=1), tuned_parameters, cv=5, scoring='f1')
-    #svm.fit(train_feats, train_labels)
+    # LDA, LR, NB, GB and SVM consistently best scoring models
+        
+    # Parameter tuning
+    # Naive Bayes (No parameters to tune)
+    tuned_scores['Naive Bayes'] = scores['Naive Bayes']
     
-    #print svm.best_params_
-    #preds = svm.predict(test_feats)
-    #print metrics.classification_report(test_labels, preds, target_names=None)
+    # Logistic regression
+    print
+    print 'Tuning Logistic Regression...'
+    tuned_parameters = [{'C': [1, 10, 100, 1000]}]
+    lr = GridSearchCV(LogisticRegression(), tuned_parameters, cv=5, scoring='f1')
+    lr.fit(train_feats, train_labels)
+    print '...Best parameter:'
+    print lr.best_params_
+    tuned_scores['Logistic Regression'] = lr.best_score_
     
+    # LDA
+    print
+    print 'Tuning Linear DA...'
+    tuned_parameters = [{'solver': ['svd', 'lsqr', 'eigen']}]
+    lda = GridSearchCV(LinearDiscriminantAnalysis(), tuned_parameters, cv=5, scoring='f1')
+    lda.fit(train_feats, train_labels)
+    print '...Best parameter:'
+    print lda.best_params_
+    tuned_scores['Linear DA'] = lda.best_score_
+    
+    # SVM
+    print
+    print 'Tuning SVM...'
+    tuned_parameters = [{'kernel': ['rbf'], 'gamma': [0.01, 0.001, 0.0001], 'C': [1, 10, 100, 1000]}, {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
+    svm = GridSearchCV(SVC(C=1), tuned_parameters, cv=5, scoring='f1')
+    svm.fit(train_feats, train_labels)
+    print '...Best parameters:'
+    print svm.best_params_
+    tuned_scores['SVM'] = svm.best_score_
+    
+    # Gradient Boosting
+    print
+    print 'Tuning Gradient Boosting...'
+    tuned_parameters = [{'loss': ['deviance', 'exponential'], 'learning_rate': [1, 0.1, 0.01, 0.001, 0.0001], 'max_depth': [1, 2, 3, 4, 5]}]
+    gbc = GridSearchCV(GradientBoostingClassifier(), tuned_parameters, cv=5, scoring='f1')
+    gbc.fit(train_feats, train_labels)
+    print '...Best parameters:'
+    print gbc.best_params_
+    tuned_scores['Gradient Boosting'] = gbc.best_score_
+    
+    # Ensemble voting classifier using tuned classifiers
+    eclf = VotingClassifier(estimators=[('Naive Bayes', nb), ('Logistic Regression', lr), ('Linear DA', lda), ('SVM', svm), ('Gradient Boosting', gbc)], voting='hard')
+    scores_ensemble1 = cross_val_score(eclf, train_feats, train_labels, cv=5, scoring='f1')
+    tuned_scores['Ensemble'] = scores_ensemble1.mean()
+    
+    # FINAL EVALUATION ON TEST DATA
+    print
+    print 'Final test scores with ensemble:'
+    eclf.fit(train_feats, train_labels)   
+    predictions = eclf.predict(test_feats)
     # extract and print info about classifier performance
-    #full_report = metrics.classification_report(test_labels,predictions,target_names=None)
-    #print full_report
+    full_report = metrics.classification_report(test_labels,predictions,target_names=None)
+    print full_report
